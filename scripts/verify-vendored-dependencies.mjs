@@ -84,16 +84,23 @@ for (const key of ["overrides", "resolutions"]) {
 // Registry settings: none of them may add or redirect a package source.
 assert.ok(!existsSync(resolve(root, ".npmrc")), ".npmrc is not allowed: it could redirect the registry")
 assert.ok(!existsSync(resolve(root, "pnpm-workspace.yaml")), "pnpm-workspace.yaml is not allowed")
-for (const variable of Object.keys(process.env)) {
-  assert.ok(!/^npm_config_.*registry$/i.test(variable), `${variable} must not be set`)
+// pnpm itself exports its default registries to scripts; any other registry setting is refused.
+const defaultRegistries = new Map([
+  ["npm_config_registry", "https://registry.npmjs.org/"],
+  ["npm_config__jsr_registry", "https://npm.jsr.io/"],
+])
+for (const [variable, value] of Object.entries(process.env)) {
+  if (/^npm_config_.*registry$/i.test(variable)) {
+    assert.equal(value, defaultRegistries.get(variable.toLowerCase()), `${variable} must not be set to ${value}`)
+  }
 }
 assert.ok(!packageJson.publishConfig?.registry, "publishConfig.registry must not be set")
 
 // pnpm-lock.yaml: split into package blocks (two-space indent keys) and check every @mennara/* one.
 const resolved = new Set()
-for (const block of lockfile.split(/\n(?=  \S)/)) {
-  const key = block.match(/^\s{2}'?(@mennara\/[^@']+)@/)
-  if (!key || !/\n    resolution:/.test(`\n${block}`)) continue
+for (const block of lockfile.split(/\n(?= {2}\S)/)) {
+  const key = block.match(/^ {2}'?(@mennara\/[^@']+)@/)
+  if (!key || !/\n {4}resolution:/.test(`\n${block}`)) continue
   const { entry, path } = vendored.get(key[1]) ?? assert.fail(`lockfile resolves ${key[1]}, which is not vendored`)
   assert.ok(
     block.includes(`resolution: {integrity: ${entry.integrity}, tarball: file:${path}}`),
