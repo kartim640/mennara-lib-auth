@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@mennara/http':
-        specifier: file:../mennara-lib-http
-        version: file:../mennara-lib-http
+        specifier: file:vendor/mennara-http-0.0.0.tgz
+        version: file:vendor/mennara-http-0.0.0.tgz
     devDependencies:
       '@changesets/cli':
         specifier: ^3.0.3
@@ -276,9 +276,10 @@ packages:
     resolution: {integrity: sha512-6QEf6yqFbETdwGITKq57aYoPfX/3K8XFNwsAlx0C1M7o8cb79sv1M3w+tWuWvIcSbNqrLF7OD7YpZMVVz335hQ==}
     engines: {node: '>=20.0.0'}
 
-  '@mennara/http@file:../mennara-lib-http':
-    resolution: {directory: ../mennara-lib-http, type: directory}
-    engines: {node: '>=22.12.0', pnpm: '>=8.15.0'}
+  '@mennara/http@file:vendor/mennara-http-0.0.0.tgz':
+    resolution: {integrity: sha512-kP1Tuif7qnY525xi4j01f+rLePst+l7GM3eA3E4CaDDEXBArsWtqkTkWu+T+mlJQkK847vV87icLvKvHohpTwg==, tarball: file:vendor/mennara-http-0.0.0.tgz}
+    version: 0.0.0
+    engines: {node: '>=22.22.2', pnpm: '>=8.15.0'}
 
   '@oxc-project/types@0.155.0':
     resolution: {integrity: sha512-SeE8JPwW1xs1tHeNycjUtUBdhorRa8o4jlvjwk49R7/Z291i+4DQa7JJIgOm/TaYQZx+QrPQbVJ/9c8dMIZN8Q==}
@@ -1537,7 +1538,7 @@ snapshots:
       tinyglobby: 0.2.17
       yaml: 2.9.1
 
-  '@mennara/http@file:../mennara-lib-http': {}
+  '@mennara/http@file:vendor/mennara-http-0.0.0.tgz': {}
 
   '@oxc-project/types@0.155.0': {}
 
