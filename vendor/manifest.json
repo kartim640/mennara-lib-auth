@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "packages": [
+    {
+      "name": "@mennara/http",
+      "version": "0.0.0",
+      "file": "mennara-http-0.0.0.tgz",
+      "sha256": "9d5060a59cc1f49d5feab198b60df2985aaa4721f7a52614a046cead62af0e13",
+      "integrity": "sha512-kP1Tuif7qnY525xi4j01f+rLePst+l7GM3eA3E4CaDDEXBArsWtqkTkWu+T+mlJQkK847vV87icLvKvHohpTwg==",
+      "tarSha256": "7076c3d84f92d82badc3f33552ba1eb693d7353eb1b4de1ded48a50e11aa54f2",
+      "entries": [
+        "package/CHANGELOG.md",
+        "package/README.md",
+        "package/dist/client.d.ts",
+        "package/dist/config.d.ts",
+        "package/dist/errors.d.ts",
+        "package/dist/index.d.ts",
+        "package/dist/index.js",
+        "package/dist/index.js.map",
+        "package/package.json"
+      ],
+      "source": {
+        "repository": "kartim640/mennara-lib-http",
+        "commit": "33f0fddf59ef3fbeeab884d6a219832937c4cee7",
+        "workflow": ".github/workflows/ci.yml (pack-reproducibility)",
+        "runId": 41208276751,
+        "artifact": "mennara-http-canonical-33f0fddf59ef3fbeeab884d6a219832937c4cee7"
+      },
+      "build": {
+        "node": "v22.22.3",
+        "pnpm": "10.29.2",
+        "os": "linux-x64"
+      },
+      "exports": [
+        "."
+      ]
+    }
+  ]
+}
