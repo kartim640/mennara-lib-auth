@@ -54,6 +54,80 @@ jobs:
       - name: Verify distribution
         run: pnpm verify:dist
 
+  pack-reproducibility:
+    name: Tarball is reproducible on Linux
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22.22.3 # exact: the canonical build environment (see docs/PACKING.md)
+          cache: pnpm
+      - name: Install (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+      - name: Verify vendored dependencies
+        run: node scripts/verify-vendored-dependencies.mjs --installed
+      - name: Pack three times (same tree, rebuilt dist, separate extraction)
+        run: |
+          set -euo pipefail
+          node scripts/pack-tarball.mjs "$RUNNER_TEMP/pack-a"
+          rm -rf dist
+          node scripts/pack-tarball.mjs "$RUNNER_TEMP/pack-b"
+          mkdir "$RUNNER_TEMP/extracted"
+          git archive HEAD | tar -x -C "$RUNNER_TEMP/extracted"
+          (cd "$RUNNER_TEMP/extracted" && pnpm install --frozen-lockfile && pnpm pack --pack-destination "$RUNNER_TEMP/pack-c")
+          tgz() { sha256sum "$RUNNER_TEMP/$1"/*.tgz | cut -d' ' -f1; }
+          tar_of() { gunzip -c "$RUNNER_TEMP/$1"/*.tgz | sha256sum | cut -d' ' -f1; }
+          field() { node -p "require('$RUNNER_TEMP/$1/mennara-auth-0.0.0.tgz.provenance.json').$2"; }
+          # pack-a and pack-b hashes come from the script (Node zlib); pack-c is hashed by system tools.
+          test "$(field pack-a tarSha256)" = "$(tar_of pack-a)"
+          {
+            echo "### Tarball hashes (linux, $(node --version), pnpm $(pnpm --version))"
+            echo "commit: \`$(git rev-parse HEAD)\`"
+            echo "- .tgz SHA-256: \`$(tgz pack-a)\`"
+            echo "- .tgz SHA-512 integrity: \`$(field pack-a integrity)\`"
+            echo "- uncompressed tar SHA-256: \`$(tar_of pack-a)\`"
+            echo "- tarball entries: \`$(tar tzf "$RUNNER_TEMP"/pack-a/*.tgz | sort | tr '\n' ' ')\`"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+          for d in pack-b pack-c; do
+            test "$(tgz $d)" = "$(tgz pack-a)"
+            test "$(tar_of $d)" = "$(tar_of pack-a)"
+          done
+      - name: Verify tarball against its provenance before upload
+        run: |
+          set -euo pipefail
+          src="$RUNNER_TEMP/pack-a"
+          out="$RUNNER_TEMP/canonical"
+          mkdir "$out"
+          cp "$src"/mennara-auth-0.0.0.tgz "$src"/mennara-auth-0.0.0.tgz.provenance.json "$out/"
+          cd "$out"
+          prov() { node -p "require('./mennara-auth-0.0.0.tgz.provenance.json').$1"; }
+          sha512="sha512-$(openssl dgst -sha512 -binary mennara-auth-0.0.0.tgz | base64 -w0)"
+          entries=$(tar tzf mennara-auth-0.0.0.tgz | LC_ALL=C sort | tr '\n' ' ')
+          test "$(sha256sum mennara-auth-0.0.0.tgz | cut -d' ' -f1)" = "$(prov sha256)"
+          test "$sha512" = "$(prov integrity)"
+          test "$(gunzip -c mennara-auth-0.0.0.tgz | sha256sum | cut -d' ' -f1)" = "$(prov tarSha256)"
+          test "$(prov 'source.commit')" = "$GITHUB_SHA"
+          test "$entries" = "$(prov 'entries.join(" ")') "
+          test "$(prov name)@$(prov version)" = "@mennara/auth@0.0.0"
+          test "$(prov 'build.node')" = "v22.22.3"
+          echo "Provenance verified for $GITHUB_SHA" | tee -a "$GITHUB_STEP_SUMMARY"
+      # Only a successful push to main uploads; pull requests never do.
+      - name: Upload canonical tarball
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mennara-auth-canonical-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/canonical/mennara-auth-0.0.0.tgz
+            ${{ runner.temp }}/canonical/mennara-auth-0.0.0.tgz.provenance.json
+          if-no-files-found: error
+          retention-days: 7
+
   audit-prod:
     name: Audit production dependencies (high/critical)
     runs-on: ubuntu-24.04
