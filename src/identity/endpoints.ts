@@ -88,9 +88,14 @@ function encodePathSegment(value: string): string {
   return encodeURIComponent(value)
 }
 
+/** Providers Identity can run a step-up with (its provider registry). */
+const STEP_UP_OAUTH_PROVIDERS: ReadonlySet<string> = new Set(["google", "microsoft", "apple"])
+
 /**
  * Collapses Identity's raw step-up method identifiers into the four options a
  * portal can offer, de-duplicated and with the OAuth providers pulled out.
+ * Identity lists a linked provider by its bare name ("google"); the older
+ * "oauth:google" form is still accepted. Unsupported providers are dropped.
  */
 export function normalizeStepUpMethods(response: { methods?: string[] }): StepUpMethods {
   const methods = Array.isArray(response.methods) ? response.methods : []
@@ -98,12 +103,14 @@ export function normalizeStepUpMethods(response: { methods?: string[] }): StepUp
   const oauthProviders: string[] = []
 
   for (const method of methods) {
+    if (typeof method !== "string") continue
     let normalized: StepUpMethod | null = null
     if (method === "passkey" || method === "password") normalized = method
     if (method === "totp" || method === "backup_code") normalized = "mfa"
-    if (method.startsWith("oauth:")) {
+    const provider = method.startsWith("oauth:") ? method.slice("oauth:".length) : method
+    if (STEP_UP_OAUTH_PROVIDERS.has(provider)) {
       normalized = "oauth"
-      oauthProviders.push(method.slice("oauth:".length))
+      if (!oauthProviders.includes(provider)) oauthProviders.push(provider)
     }
 
     if (!normalized) continue

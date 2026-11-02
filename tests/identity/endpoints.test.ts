@@ -87,11 +87,63 @@ describe("normalizeStepUpMethods", () => {
     })
   })
 
-  it("de-duplicates methods and collects every oauth provider", () => {
-    expect(normalizeStepUpMethods({ methods: ["totp", "backup_code", "oauth:google", "oauth:github"] })).toEqual({
+  it("de-duplicates methods and collects every supported oauth provider", () => {
+    expect(normalizeStepUpMethods({ methods: ["totp", "backup_code", "oauth:google", "oauth:microsoft"] })).toEqual({
       available_methods: ["mfa", "oauth"],
       recommended_method: "mfa",
-      oauth_providers: ["google", "github"],
+      oauth_providers: ["google", "microsoft"],
+    })
+  })
+
+  it("keeps password, passkey, totp and backup-code mapping unchanged", () => {
+    expect(normalizeStepUpMethods({ methods: ["passkey", "totp", "backup_code", "password"] })).toEqual({
+      available_methods: ["passkey", "mfa", "password"],
+      recommended_method: "passkey",
+      oauth_providers: [],
+    })
+  })
+
+  it("accepts the bare provider names Identity returns", () => {
+    expect(normalizeStepUpMethods({ methods: ["apple", "google", "microsoft"] })).toEqual({
+      available_methods: ["oauth"],
+      recommended_method: "oauth",
+      oauth_providers: ["apple", "google", "microsoft"],
+    })
+  })
+
+  it("offers provider step-up to a provider-only account with MFA", () => {
+    expect(normalizeStepUpMethods({ methods: ["totp", "backup_code", "google"] })).toEqual({
+      available_methods: ["mfa", "oauth"],
+      recommended_method: "mfa",
+      oauth_providers: ["google"],
+    })
+  })
+
+  it("lists a provider once when both identifier forms are present", () => {
+    expect(normalizeStepUpMethods({ methods: ["google", "oauth:google", "password"] })).toEqual({
+      available_methods: ["oauth", "password"],
+      recommended_method: "oauth",
+      oauth_providers: ["google"],
+    })
+  })
+
+  it("drops unsupported or malformed provider identifiers", () => {
+    expect(
+      normalizeStepUpMethods({
+        methods: ["github", "oauth:github", "oauth:", "oauth", "Google", " google", "oauth:oauth:google", "mfa", ""],
+      }),
+    ).toEqual({
+      available_methods: [],
+      recommended_method: null,
+      oauth_providers: [],
+    })
+  })
+
+  it("ignores non-string entries", () => {
+    expect(normalizeStepUpMethods({ methods: [null, 42, "password"] as unknown as string[] })).toEqual({
+      available_methods: ["password"],
+      recommended_method: "password",
+      oauth_providers: [],
     })
   })
 })
